@@ -1,0 +1,110 @@
+1 instalação do vagrant
+curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
+sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
+sudo apt-get update && sudo apt-get install vagrant
+vagrant --version
+vagrant plugin install vagrant-vbguest --plugin-version 0.21
+
+2 criação das maquinas: control-node, app01 e db01
+criar o Vagrantfile com vagrant init
+Vagrant.configure("2") do |config| 
+  config.vm.box = "centos/7"
+  config.vm.hostname = "control-node"
+  config.vm.network "private_network", ip: "192.168.56.10"
+  config.vm.synced_folder ".", "/vagrant", type: "nfs"
+  config.vm.provision "shell", path: "provision.sh"
+end
+
+3. criar o arquivo "provision.sh"
+#/bin/sh
+sudo yum -y install epel-release
+echo "Inicio da instalação do ansible"
+sudo yum -y install ansible
+cat <<EOT >> /etc/hosts
+192.168.56.10 control-node
+192.168.56.11 app01
+192.168.56.12 db01
+EOT
+
+4. no diretorio do control-node
+executar agora 
+vagrant up
+
+4.1 caso ocorra o problema de nfs no linux:
+sudo apt-get install nfs-common nfs-kernel-server
+eu usei o range de ip, por que era o suportado pelo virtualbox
+
+5. entrar no control-node e fazer as sequintes verificações
+5.1 entrar no arquivo /etc/ansible/hosts
+e acrescentar:
+[apps]
+app01
+[dbs]
+db01
+
+5.2 executar o comando ssh-keygen e entrar no diretorio .ssh que será criado
+5.3 executar um
+cat id_rsa.pub
+5.4 copiar o conteudo dessa chave publica
+
+6. criar as outras duas maquinas:
+app01
+
+Vagrant.configure("2") do |config| 
+    config.vm.box = "centos/7"
+    config.vm.hostname = "app01"
+    config.vm.network "private_network", ip: "192.168.56.11"
+    config.vm.network "forwarded_port", guest: 8080, host: 8080
+    config.vm.provision "shell", path: "provision.sh"
+  end
+  
+db01
+
+Vagrant.configure("2") do |config| 
+    config.vm.box = "centos/7"
+    config.vm.hostname = "db01"
+    config.vm.network "private_network", ip: "192.168.56.12"
+    config.vm.network "forwarded_port", guest: 3306, host: 3306
+    config.vm.provision "shell", path: "provision.sh"
+  end
+  
+7. rodar o vagrant up em cada diretorio para criar as maquinas
+
+8. criar os arquivos "provision.sh" com a chave publica do control-node
+#/bin/sh
+cat << EOT >> /home/vagrant/.ssh/authorized_keys
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDPw7A2EVSIOGHWPApKddYwpZf8zl8oyRymsN+6td1nBgZB9wpJoZUykYsVmipHHzPQs/SSjw+8aKANCRQval1+64iw3ACcDIEKM4PYOozrdOwBgg/8J3CDIo4vujCElasXGEJDyXTLt3TOJccuSYu/r2yBIgJ28NKLELb7wsfOb2aiBhYsgpbPt4E2VMx+rHInUaMWYx3IEYykd6SGu3GEG6ZhjfHUoHWt2o1zoFSQdtyY0r+pYhGwSxjqq7wWstkyYeEPaUq8gEnS6ouSmrw3eA+3GtNG1k4Nq8CJiPv0o3RYnJCupO84aaAYKtpR4zkoFg6Of9pIM1KGqbONQWax vagrant@control-node
+EOT
+
+9. rodar o:
+vagrant reload --provision nas maquinas db01 e app01
+
+10. entrar na maquina controle-node
+vagrant ssh
+
+e excutar o seguinte comando:
+ansible -m ping all
+
+o resultado vai ser esse:
+
+db01 | SUCCESS => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python"
+    }, 
+    "changed": false, 
+    "ping": "pong"
+}
+app01 | SUCCESS => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python"
+    }, 
+    "changed": false, 
+    "ping": "pong"
+}
+
+Nesse momento as maquinas estão fazendo ping entre elas 
+e o control node agora pode acessar uma maquina especifica via ssh
+------------------------------------------------------------------------------------------------------
+######################################################################################################
+------------------------------------------------------------------------------------------------------
+
