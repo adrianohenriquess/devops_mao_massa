@@ -108,3 +108,43 @@ e o control node agora pode acessar uma maquina especifica via ssh
 ######################################################################################################
 ------------------------------------------------------------------------------------------------------
 
+configuração da maquina de banco de dados db01
+1. criação da estrutura de pastas
+control-node
+  - handlers
+  - roles
+    - configuracao-deefault-so
+      - main.yml
+  - templates
+  - vars
+    main.yml
+  db.yaml
+
+criar o arquivo db.yaml
+nele contem todas as configurações de banco e um playbook predifinido em:
+https://galaxy.ansible.com/
+para que ele funcione o seguinte pacote deve ser instaldo no ansible:
+ansible-galaxy install geerlingguy.mysql
+e criar uma pasta vars com esse conteudo:
+mysql_root_password: devopsmaonamassa
+mysql_databases:
+  - name: notes
+    encoding: latin1
+    collation: latin1_general_ci
+mysql_users:
+  - name: notesapp
+    host: "%"
+    password: devopsmaonamassa
+    priv: "notes.*:ALL"
+
+depois rodar o comando para o plabook: 
+ansible-plabook db.yaml
+
+para executar o build e deploy da aplicação java
+criar o playbook app.yml
+ansible-plabook app.yml
+
+criar tambem todos os arquivos necessarios para o funcionamento correto
+
+
+
